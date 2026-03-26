@@ -29,12 +29,12 @@ Built for teams in regulated Australian industries — financial services, gover
 ## How it works
 
 ```
-┌─────────────┐     stdio      ┌─────────────────┐   Presidio    ┌─────────┐
+┌─────────────┐     stdio      ┌──────────────────┐   Presidio    ┌─────────┐
 │  MCP Client │◄──────────────►│mcp-pii-guard-au  │──────────────►│  spaCy  │
 │  (Claude,   │  JSON-RPC      │                  │ NLP detection │en_core_ │
 │   Cursor,   │                │  4 tools         │ + 10 custom   │web_lg   │
 │   agent)    │                │  audit log       │ AU recognisers│         │
-└─────────────┘                └────────┬─────────┘              └─────────┘
+└─────────────┘                └────────┬─────────┘               └─────────┘
                                         │
                                         ▼
                                  logs/pii_guard_audit.jsonl
