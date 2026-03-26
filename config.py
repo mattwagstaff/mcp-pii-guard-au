@@ -89,7 +89,7 @@ ENTITY_METADATA: Final[dict[str, dict]] = {
         "examples": ["123 Pitt Street, Sydney NSW 2000"],
     },
     "MEDICAL_LICENSE": {
-        "description": "Medical license or registration numbers",
+        "description": "Medical licence or registration numbers",
         "frameworks": ["HIPAA"],
         "examples": ["MD12345"],
     },

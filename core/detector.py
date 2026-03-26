@@ -1,4 +1,4 @@
-"""Presidio analyzer wrapper with custom Australian recognizers."""
+"""Presidio analyser wrapper with custom Australian recognisers."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from core.recognizers import AuAbnRecognizer, AuMedicareRecognizer, AuTfnRecogni
 
 
 def create_analyzer() -> AnalyzerEngine:
-    """Create and configure the Presidio AnalyzerEngine with custom recognizers.
+    """Create and configure the Presidio AnalyzerEngine with custom recognisers.
 
-    Loads the spaCy en_core_web_lg model and registers Australian recognizers.
+    Loads the spaCy en_core_web_lg model and registers Australian recognisers.
     """
     nlp_config = {
         "nlp_engine_name": "spacy",
@@ -22,7 +22,7 @@ def create_analyzer() -> AnalyzerEngine:
 
     analyzer = AnalyzerEngine(nlp_engine=nlp_engine, supported_languages=["en"])
 
-    # Register custom Australian recognizers
+    # Register custom Australian recognisers
     analyzer.registry.add_recognizer(AuTfnRecognizer())
     analyzer.registry.add_recognizer(AuMedicareRecognizer())
     analyzer.registry.add_recognizer(AuAbnRecognizer())

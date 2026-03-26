@@ -1,4 +1,4 @@
-"""Presidio anonymizer wrapper with multiple redaction modes."""
+"""Presidio anonymiser wrapper with multiple redaction modes."""
 
 from __future__ import annotations
 
@@ -95,16 +95,16 @@ def sanitize(
     results: list[RecognizerResult],
     mode: Literal["redact", "replace", "tokenize"] = "redact",
 ) -> str:
-    """Sanitize text by applying the chosen anonymization mode.
+    """Sanitise text by applying the chosen anonymisation mode.
 
     Args:
         anonymizer: Configured Presidio AnonymizerEngine.
-        text: Original text to sanitize.
-        results: Detection results from the analyzer.
-        mode: Anonymization strategy — redact, replace, or tokenize.
+        text: Original text to sanitise.
+        results: Detection results from the analyser.
+        mode: Anonymisation strategy — redact, replace, or tokenize.
 
     Returns:
-        Sanitized text string.
+        Sanitised text string.
     """
     if not results:
         return text

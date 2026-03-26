@@ -1,4 +1,4 @@
-"""Australian Tax File Number (TFN) recognizer.
+"""Australian Tax File Number (TFN) recogniser.
 
 TFNs are 8 or 9 digit numbers validated with a weighted checksum algorithm.
 The weights for a 9-digit TFN are [1, 4, 3, 7, 5, 8, 6, 9, 10].
@@ -45,7 +45,7 @@ def _validate_tfn(digits: str) -> bool:
 
 
 class AuTfnRecognizer(PatternRecognizer):
-    """Recognizer for Australian Tax File Numbers.
+    """Recogniser for Australian Tax File Numbers.
 
     Uses pattern matching with checksum validation and context-word boosting.
     A bare 9-digit number matching the checksum scores ~0.4. With nearby context

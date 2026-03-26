@@ -1,4 +1,4 @@
-"""Australian Medicare card number recognizer.
+"""Australian Medicare card number recogniser.
 
 Medicare numbers are 10 digits (plus an optional issue number digit, totalling 11
 on the physical card). The first 8 digits are validated with a weighted checksum.
@@ -48,7 +48,7 @@ def _validate_medicare(digits: str) -> bool:
 
 
 class AuMedicareRecognizer(PatternRecognizer):
-    """Recognizer for Australian Medicare card numbers.
+    """Recogniser for Australian Medicare card numbers.
 
     Uses pattern matching with checksum validation and context-word boosting.
     The first digit must be 2-6, and the 9th digit must match the weighted

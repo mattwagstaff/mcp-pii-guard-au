@@ -1,18 +1,18 @@
 # mcp-pii-guard-au
 
-Australian PII detection and sanitization for AI agents. An [MCP server](https://modelcontextprotocol.io) that finds and redacts Tax File Numbers (TFN), Medicare card numbers, ABNs, and 13 other PII entity types in text — before it reaches an LLM or gets stored. Built on [Microsoft Presidio](https://microsoft.github.io/presidio/) with custom Australian recognizers that use real checksum validation, not just regex.
+Australian PII detection and sanitisation for AI agents. An [MCP server](https://modelcontextprotocol.io) that finds and redacts Tax File Numbers (TFN), Medicare card numbers, ABNs, and 13 other PII entity types in text — before it reaches an LLM or gets stored. Built on [Microsoft Presidio](https://microsoft.github.io/presidio/) with custom Australian recognisers that use real checksum validation, not just regex.
 
-[Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that lets AI assistants — Claude, Cursor, Copilot, custom agents — call external tools over a standardised interface. This server exposes PII detection and sanitization as MCP tools. Any MCP-compatible client can call them without custom integration code.
+[Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that lets AI assistants — Claude, Cursor, Copilot, custom agents — call external tools over a standardised interface. This server exposes PII detection and sanitisation as MCP tools. Any MCP-compatible client can call them without custom integration code.
 
 Built for teams in regulated Australian industries — financial services, government, healthcare — who need to prove PII was scrubbed before data left a trust boundary. Compliance-ready for the Australian Privacy Act (APPs), GDPR, HIPAA, SOX, and PCI-DSS.
 
 ---
 
-**Australian entity types that don't exist elsewhere.** TFN, Medicare, and ABN recognizers with real checksum validation — not just regex. Every Presidio wrapper and PII tool on GitHub handles US SSNs and credit cards. None of them handle Australian Tax File Numbers, Medicare card numbers, or ABNs with proper validation. If you're building AI tooling for AU/NZ enterprise, government, or health, this is the gap.
+**Australian entity types that don't exist elsewhere.** TFN, Medicare, and ABN recognisers with real checksum validation — not just regex. Every Presidio wrapper and PII tool on GitHub handles US SSNs and credit cards. None of them handle Australian Tax File Numbers, Medicare card numbers, or ABNs with proper validation. If you're building AI tooling for AU/NZ enterprise, government, or health, this is the gap.
 
 **Audit logging that a compliance officer can actually use.** Every scan writes structured JSON to an append-only log file. It records *what types of PII were found*, *how many*, *what tool was called*, and *what confidence threshold was used*. It never records the original text. It never records the detected values. This is the difference between an audit trail and a liability — and it's what GDPR Article 30, the Australian Privacy Act, and SOX controls actually require.
 
-**Four tools, deliberately.** Most MCP servers ship a dozen tools and let the model figure it out. Every tool an agent has to evaluate costs context window tokens, increases routing errors, and makes the system harder to audit. This server exposes exactly four tools with clear contracts: detect, sanitize text, sanitize documents, list entities. Small surface. Predictable behaviour. Easy to reason about in an agent workflow.
+**Four tools, deliberately.** Most MCP servers ship a dozen tools and let the model figure it out. Every tool an agent has to evaluate costs context window tokens, increases routing errors, and makes the system harder to audit. This server exposes exactly four tools with clear contracts: detect, sanitise text, sanitise documents, list entities. Small surface. Predictable behaviour. Easy to reason about in an agent workflow.
 
 ---
 
@@ -31,7 +31,7 @@ Built for teams in regulated Australian industries — financial services, gover
 │  MCP Client │◄──────────────►│mcp-pii-guard-au  │──────────────►│  spaCy  │
 │  (Claude,   │  JSON-RPC      │                  │ NLP detection │en_core_ │
 │   Cursor,   │                │  4 tools         │ + custom AU   │web_lg   │
-│   agent)    │                │  audit log       │ recognizers   │         │
+│   agent)    │                │  audit log       │ recognisers   │         │
 └─────────────┘                └────────┬─────────┘              └─────────┘
                                         │
                                         ▼
@@ -172,7 +172,7 @@ Three modes:
 
 ### `sanitize_document`
 
-Recursively sanitize all string fields in a JSON document. For CRM records, customer objects, form submissions — anything structured.
+Recursively sanitise all string fields in a JSON document. For CRM records, customer objects, form submissions — anything structured.
 
 ```json
 // Input
@@ -196,7 +196,7 @@ Recursively sanitize all string fields in a JSON document. For CRM records, cust
     "notes": "Called re TFN [REDACTED:AU_TFN]"
   },
   "fields_processed": 3,
-  "fields_sanitized": 3,
+  "fields_sanitised": 3,
   "total_entities_removed": 4,
   "entity_summary": {"PERSON": 1, "EMAIL_ADDRESS": 1, "AU_TFN": 1},
   "scan_id": "i9j0k1l2-..."
@@ -209,7 +209,7 @@ Returns every entity type this server can detect, with descriptions, compliance 
 
 ## Supported Entity Types
 
-### Australian entities (custom recognizers)
+### Australian entities (custom recognisers)
 
 These are the entity types that don't exist in other PII tools. Each uses the official government-published validation algorithm, not just a digit-count regex.
 
@@ -232,7 +232,7 @@ These are the entity types that don't exist in other PII tools. Each uses the of
 | `URL` | URLs that may contain PII | GDPR | Pattern |
 | `DATE_TIME` | Dates and times (e.g. date of birth) | GDPR, HIPAA, APPs | Pattern + NLP |
 | `LOCATION` | Physical addresses and locations | GDPR, APPs, HIPAA | NLP |
-| `MEDICAL_LICENSE` | Medical license numbers | HIPAA | Pattern |
+| `MEDICAL_LICENSE` | Medical licence numbers | HIPAA | Pattern |
 | `US_SSN` | US Social Security Numbers | SOX, HIPAA | Pattern + checksum |
 | `US_PASSPORT` | US passport numbers | GDPR, SOX | Pattern |
 | `US_BANK_NUMBER` | US bank account numbers | SOX, PCI-DSS | Pattern |
@@ -257,7 +257,7 @@ Every tool call writes a structured JSON entry to `./logs/pii_guard_audit.jsonl`
 
 **What's logged:** scan ID, tool name, entity types found, entity count, mode, text length, confidence threshold, language.
 
-**What's never logged:** the original text, the detected PII values, the sanitized output. The audit trail proves *that* PII was handled. It doesn't create a second copy of the PII.
+**What's never logged:** the original text, the detected PII values, the sanitised output. The audit trail proves *that* PII was handled. It doesn't create a second copy of the PII.
 
 For production use, forward the JSONL file to your SIEM or log aggregator (Splunk, Datadog, ELK). Each line is a self-contained JSON object — no parsing needed beyond newline splitting.
 
@@ -333,15 +333,15 @@ All defaults can be overridden per-call via tool parameters.
 
 ### How does TFN detection work? Is it just regex?
 
-No. The TFN recognizer uses a two-stage process: a regex pattern matches 8 or 9-digit sequences formatted like TFNs (`\d{3}\s?\d{3}\s?\d{2,3}`), then the match is validated using the ATO's weighted checksum algorithm (weights `[1, 4, 3, 7, 5, 8, 6, 9, 10]`, sum divisible by 11). Only numbers that pass the checksum are reported. Context words like "TFN", "tax file number", and "ATO" near the match boost the confidence score above the default threshold.
+No. The TFN recogniser uses a two-stage process: a regex pattern matches 8 or 9-digit sequences formatted like TFNs (`\d{3}\s?\d{3}\s?\d{2,3}`), then the match is validated using the ATO's weighted checksum algorithm (weights `[1, 4, 3, 7, 5, 8, 6, 9, 10]`, sum divisible by 11). Only numbers that pass the checksum are reported. Context words like "TFN", "tax file number", and "ATO" near the match boost the confidence score above the default threshold.
 
 ### How does Medicare number detection work?
 
-The Medicare recognizer matches 10-digit numbers where the first digit is 2–6, then validates using a weighted checksum (weights `[1, 3, 7, 9, 1, 3, 7, 9]` across the first 8 digits, with the 9th digit as the check digit). Context words like "medicare", "medicare card", and "Services Australia" boost confidence.
+The Medicare recogniser matches 10-digit numbers where the first digit is 2–6, then validates using a weighted checksum (weights `[1, 3, 7, 9, 1, 3, 7, 9]` across the first 8 digits, with the 9th digit as the check digit). Context words like "medicare", "medicare card", and "Services Australia" boost confidence.
 
 ### How does ABN validation work?
 
-The ABN recognizer matches 11-digit numbers and validates using the official ABN algorithm: subtract 1 from the first digit, multiply each digit by its weight (`[10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19]`), sum the products, and check divisibility by 89. Context words like "ABN", "business number", and "GST" boost confidence.
+The ABN recogniser matches 11-digit numbers and validates using the official ABN algorithm: subtract 1 from the first digit, multiply each digit by its weight (`[10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19]`), sum the products, and check divisibility by 89. Context words like "ABN", "business number", and "GST" boost confidence.
 
 ### Does this work with Claude Desktop?
 
@@ -353,11 +353,11 @@ Yes. Add the server to a `.mcp.json` file in your project root. Claude Code will
 
 ### Does it detect Australian phone numbers?
 
-Presidio's built-in phone number recognizer handles international formats including Australian numbers (`+61 X XXXX XXXX`, `0X XXXX XXXX`, `04XX XXX XXX`). No custom recognizer needed.
+Presidio's built-in phone number recogniser handles international formats including Australian numbers (`+61 X XXXX XXXX`, `0X XXXX XXXX`, `04XX XXX XXX`). No custom recogniser needed.
 
 ### Does the audit log contain the original PII?
 
-No. This is a deliberate design decision. The audit log records metadata only: what entity types were found, how many, which tool was called, the text length, and the confidence threshold. It never records the original text, the detected values, or the sanitized output. The audit trail proves that PII was handled without creating a second copy of the PII itself.
+No. This is a deliberate design decision. The audit log records metadata only: what entity types were found, how many, which tool was called, the text length, and the confidence threshold. It never records the original text, the detected values, or the sanitised output. The audit trail proves that PII was handled without creating a second copy of the PII itself.
 
 ### What compliance frameworks does this support?
 
@@ -365,11 +365,11 @@ Entity types are mapped to: the **Australian Privacy Act** (APPs), the **Taxatio
 
 ### Can I use this without MCP? As a Python library?
 
-The core detection and sanitization logic is in `core/detector.py` and `core/sanitizer.py`. You can import and call these directly without running the MCP server. The MCP layer in `server.py` is a thin wrapper.
+The core detection and sanitisation logic is in `core/detector.py` and `core/sanitiser.py`. You can import and call these directly without running the MCP server. The MCP layer in `server.py` is a thin wrapper.
 
 ### Why only four tools?
 
-Every tool an LLM agent has access to must be described in the system prompt, consuming context window tokens. Each additional tool increases the chance of the model selecting the wrong one. Four tools with clear, non-overlapping purposes (detect, sanitize text, sanitize document, list entities) gives agents enough capability to handle any PII workflow without the ambiguity of a large tool surface. This is a deliberate constraint, not a limitation.
+Every tool an LLM agent has access to must be described in the system prompt, consuming context window tokens. Each additional tool increases the chance of the model selecting the wrong one. Four tools with clear, non-overlapping purposes (detect, sanitise text, sanitise document, list entities) gives agents enough capability to handle any PII workflow without the ambiguity of a large tool surface. This is a deliberate constraint, not a limitation.
 
 ## Roadmap
 

@@ -1,4 +1,4 @@
-"""Custom Australian PII recognizers for Presidio."""
+"""Custom Australian PII recognisers for Presidio."""
 
 from core.recognizers.au_abn import AuAbnRecognizer
 from core.recognizers.au_medicare import AuMedicareRecognizer

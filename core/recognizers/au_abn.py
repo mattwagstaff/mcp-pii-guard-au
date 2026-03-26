@@ -1,4 +1,4 @@
-"""Australian Business Number (ABN) recognizer.
+"""Australian Business Number (ABN) recogniser.
 
 ABNs are 11-digit numbers validated with the following algorithm:
 1. Subtract 1 from the first digit.
@@ -46,7 +46,7 @@ def _validate_abn(digits: str) -> bool:
 
 
 class AuAbnRecognizer(PatternRecognizer):
-    """Recognizer for Australian Business Numbers.
+    """Recogniser for Australian Business Numbers.
 
     Uses pattern matching with the official ABN validation algorithm and
     context-word boosting. The checksum alone is highly selective (only ~1 in 89

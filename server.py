@@ -1,6 +1,6 @@
-"""mcp-pii-guard — MCP server for PII detection and sanitization.
+"""mcp-pii-guard-au — MCP server for PII detection and sanitisation.
 
-A compliance-first MCP server for regulated industries. Detects and sanitizes
+A compliance-first MCP server for regulated industries. Detects and sanitises
 personally identifiable information using Microsoft Presidio before text
 reaches an LLM or is stored/transmitted.
 
@@ -54,7 +54,7 @@ def _check_spacy_model() -> None:
 
 @asynccontextmanager
 async def app_lifespan(server: FastMCP) -> AsyncIterator[dict]:
-    """Initialize Presidio engines and audit logger on startup."""
+    """Initialise Presidio engines and audit logger on startup."""
     _check_spacy_model()
 
     analyzer = create_analyzer()
@@ -88,7 +88,7 @@ def detect_pii(
     Use this tool when you need to inspect what PII exists in text before deciding
     what to do with it. Returns entity types, positions, and confidence scores.
 
-    Do NOT send text that has already been sanitized — it will find nothing.
+    Do NOT send text that has already been sanitised — it will find nothing.
     Do NOT use this if you want the text cleaned; use sanitize_text instead.
 
     Args:
@@ -167,12 +167,12 @@ def sanitize_text(
     - "tokenize": replaces PII with stable tokens like {{EMAIL_1}} (useful if you
       need to reference the same entity later without exposing the value)
 
-    Do NOT send already-sanitized text through this tool again.
+    Do NOT send already-sanitised text through this tool again.
     Do NOT use this for structured documents (dicts/JSON) — use sanitize_document.
 
     Args:
-        text: The text to sanitize.
-        mode: Sanitization strategy. Default "redact".
+        text: The text to sanitise.
+        mode: Sanitisation strategy. Default "redact".
         entity_types: Optional filter for specific entity types.
         min_confidence: Minimum confidence threshold. Default 0.7.
         audit: Whether to write an audit log entry. Default True.
@@ -236,7 +236,7 @@ def _sanitize_document_recursive(
     min_confidence: float,
     stats: dict,
 ) -> object:
-    """Recursively walk a document and sanitize all string values."""
+    """Recursively walk a document and sanitise all string values."""
     if isinstance(obj, dict):
         result = {}
         for key, value in obj.items():
@@ -298,19 +298,19 @@ def sanitize_document(
     skip_fields: list[str] | None = None,
     audit: bool = True,
 ) -> dict:
-    """Sanitize all string fields in a JSON document (dict) recursively. Use this
+    """Sanitise all string fields in a JSON document (dict) recursively. Use this
     for structured data like CRM records, customer objects, form submissions, or
     any multi-field object where PII might appear in multiple places.
 
-    Walks every nested string value and applies PII detection and sanitization.
+    Walks every nested string value and applies PII detection and sanitisation.
     Non-string values (numbers, booleans, nulls) are passed through unchanged.
 
     Do NOT use this for plain text — use sanitize_text instead.
     Do NOT send documents with binary data or encoded content.
 
     Args:
-        document: A JSON-serializable dict to sanitize.
-        mode: Sanitization strategy. Default "redact".
+        document: A JSON-serialisable dict to sanitise.
+        mode: Sanitisation strategy. Default "redact".
         skip_fields: Field names to skip (e.g. ["id", "created_at"]).
         audit: Whether to write an audit log entry. Default True.
     """

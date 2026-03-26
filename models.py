@@ -1,4 +1,4 @@
-"""Pydantic models for mcp-pii-guard request/response schemas."""
+"""Pydantic models for mcp-pii-guard-au request/response schemas."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ class DetectPiiResult(BaseModel):
 
 
 class SanitizeTextResult(BaseModel):
-    """Result of sanitizing a single text string."""
+    """Result of sanitising a single text string."""
 
     original_length: int
     sanitized_text: str
@@ -39,7 +39,7 @@ class SanitizeTextResult(BaseModel):
 
 
 class SanitizeDocumentResult(BaseModel):
-    """Result of sanitizing a multi-field document."""
+    """Result of sanitising a multi-field document."""
 
     sanitized_document: dict
     fields_processed: int
