@@ -1,11 +1,11 @@
-"""Configuration constants and defaults for mcp-pii-guard."""
+"""Configuration constants and defaults for mcp-pii-guard-au."""
 
 from __future__ import annotations
 
 import os
 from typing import Final
 
-SERVER_NAME: Final[str] = "mcp-pii-guard"
+SERVER_NAME: Final[str] = "mcp-pii-guard-au"
 SERVER_VERSION: Final[str] = "0.1.0"
 
 DEFAULT_CONFIDENCE_THRESHOLD: Final[float] = 0.7

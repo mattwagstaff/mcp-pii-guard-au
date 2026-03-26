@@ -1,10 +1,50 @@
 [project]
-name = "mcp-pii-guard"
+name = "mcp-pii-guard-au"
 version = "0.1.0"
-description = "MCP server for PII detection and sanitization — compliance-first design for regulated industries"
+description = "MCP server for Australian PII detection and sanitization — TFN, Medicare, ABN recognizers with checksum validation, compliance audit logging, built on Presidio"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
+authors = [
+    { name = "Matt Wagstaff" },
+]
+keywords = [
+    "mcp",
+    "mcp-server",
+    "pii",
+    "pii-detection",
+    "pii-redaction",
+    "presidio",
+    "australian-privacy",
+    "tfn",
+    "tax-file-number",
+    "medicare",
+    "abn",
+    "gdpr",
+    "hipaa",
+    "compliance",
+    "data-privacy",
+    "anonymization",
+    "llm",
+    "ai-safety",
+    "claude",
+    "model-context-protocol",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Filters",
+    "Typing :: Typed",
+]
 dependencies = [
     "mcp[cli]>=1.0",
     "presidio-analyzer>=2.2",
@@ -13,6 +53,11 @@ dependencies = [
     "structlog>=24.0",
     "pydantic>=2.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/mattwagstaff/mcp-pii-guard-au"
+Repository = "https://github.com/mattwagstaff/mcp-pii-guard-au"
+Issues = "https://github.com/mattwagstaff/mcp-pii-guard-au/issues"
 
 [build-system]
 requires = ["hatchling"]
