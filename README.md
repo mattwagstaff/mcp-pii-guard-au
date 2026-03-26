@@ -56,7 +56,7 @@ python -m spacy download en_core_web_lg
 
 ```bash
 # From source
-git clone https://github.com/YOUR_USERNAME/mcp-pii-guard.git
+git clone https://github.com/mattwagstaff/mcp-pii-guard.git
 cd mcp-pii-guard
 uv pip install -e .
 python -m spacy download en_core_web_lg
