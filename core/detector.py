@@ -6,7 +6,18 @@ from presidio_analyzer import AnalyzerEngine, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 
 from config import DEFAULT_CONFIDENCE_THRESHOLD, DEFAULT_ENTITY_TYPES, DEFAULT_LANGUAGE
-from core.recognizers import AuAbnRecognizer, AuMedicareRecognizer, AuTfnRecognizer
+from core.recognizers import (
+    AuAbnRecognizer,
+    AuAcnRecognizer,
+    AuAddressRecognizer,
+    AuBankAccountRecognizer,
+    AuBsbRecognizer,
+    AuDriversLicenceRecognizer,
+    AuMedicareRecognizer,
+    AuPassportRecognizer,
+    AuTfnRecognizer,
+    CentrelinkCrnRecognizer,
+)
 
 
 def create_analyzer() -> AnalyzerEngine:
@@ -26,6 +37,13 @@ def create_analyzer() -> AnalyzerEngine:
     analyzer.registry.add_recognizer(AuTfnRecognizer())
     analyzer.registry.add_recognizer(AuMedicareRecognizer())
     analyzer.registry.add_recognizer(AuAbnRecognizer())
+    analyzer.registry.add_recognizer(AuAcnRecognizer())
+    analyzer.registry.add_recognizer(AuDriversLicenceRecognizer())
+    analyzer.registry.add_recognizer(AuPassportRecognizer())
+    analyzer.registry.add_recognizer(AuBsbRecognizer())
+    analyzer.registry.add_recognizer(AuBankAccountRecognizer())
+    analyzer.registry.add_recognizer(AuAddressRecognizer())
+    analyzer.registry.add_recognizer(CentrelinkCrnRecognizer())
 
     return analyzer
 

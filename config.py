@@ -37,12 +37,71 @@ CUSTOM_ENTITIES: Final[list[str]] = [
     "AU_TFN",
     "AU_MEDICARE",
     "AU_ABN",
+    "AU_ACN",
+    "AU_DRIVERS_LICENCE",
+    "AU_PASSPORT",
+    "AU_BSB",
+    "AU_BANK_ACCOUNT",
+    "AU_ADDRESS",
+    "CENTRELINK_CRN",
 ]
 
 DEFAULT_ENTITY_TYPES: Final[list[str]] = STANDARD_ENTITIES + CUSTOM_ENTITIES
 
 # Entity metadata for list_supported_entities
 ENTITY_METADATA: Final[dict[str, dict]] = {
+    # --- Australian custom entities ---
+    "AU_TFN": {
+        "description": "Australian Tax File Number (8 or 9 digit with weighted mod-11 checksum)",
+        "frameworks": ["APPs", "TAA"],
+        "examples": ["123 456 782"],
+    },
+    "AU_MEDICARE": {
+        "description": "Australian Medicare card number (10-digit with weighted mod-10 checksum)",
+        "frameworks": ["APPs", "HIPAA"],
+        "examples": ["2123 45670 1"],
+    },
+    "AU_ABN": {
+        "description": "Australian Business Number (11-digit with mod-89 checksum)",
+        "frameworks": ["APPs", "ATO"],
+        "examples": ["51 824 753 556"],
+    },
+    "AU_ACN": {
+        "description": "Australian Company Number (9-digit with modulus-10 checksum)",
+        "frameworks": ["APPs", "ASIC"],
+        "examples": ["005 499 981"],
+    },
+    "AU_DRIVERS_LICENCE": {
+        "description": "Australian drivers licence number (format varies by state — NSW, VIC, QLD, SA, WA, TAS, NT, ACT)",
+        "frameworks": ["APPs"],
+        "examples": ["AB123456", "12345678"],
+    },
+    "AU_PASSPORT": {
+        "description": "Australian passport number (1–2 letter prefix + 7 digits)",
+        "frameworks": ["APPs", "DFAT"],
+        "examples": ["PA1234567", "N1234567"],
+    },
+    "AU_BSB": {
+        "description": "Australian BSB (Bank-State-Branch) number (6-digit bank branch identifier)",
+        "frameworks": ["APPs", "PCI-DSS"],
+        "examples": ["062-000", "033-123"],
+    },
+    "AU_BANK_ACCOUNT": {
+        "description": "Australian bank account number (6–10 digits, typically paired with a BSB)",
+        "frameworks": ["APPs", "PCI-DSS"],
+        "examples": ["1234 5678", "123456789"],
+    },
+    "AU_ADDRESS": {
+        "description": "Australian street or postal address (street number + name + type + suburb/state/postcode, or PO Box)",
+        "frameworks": ["APPs", "GDPR"],
+        "examples": ["123 Pitt Street, Sydney NSW 2000", "PO Box 456, Melbourne VIC 3001"],
+    },
+    "CENTRELINK_CRN": {
+        "description": "Centrelink Customer Reference Number (9 digits + check letter, issued by Services Australia)",
+        "frameworks": ["APPs", "Social Security Act"],
+        "examples": ["123 456 789A"],
+    },
+    # --- Standard Presidio entities ---
     "PERSON": {
         "description": "Person names — first, last, or full names",
         "frameworks": ["GDPR", "APPs", "HIPAA", "SOX"],
@@ -54,9 +113,9 @@ ENTITY_METADATA: Final[dict[str, dict]] = {
         "examples": ["user@domain.com"],
     },
     "PHONE_NUMBER": {
-        "description": "Phone numbers in local or international formats",
+        "description": "Phone numbers in local or international formats (includes Australian mobile and landline)",
         "frameworks": ["GDPR", "APPs", "HIPAA"],
-        "examples": ["+61 2 9876 5432", "(02) 9876 5432"],
+        "examples": ["+61 2 9876 5432", "0412 345 678"],
     },
     "CREDIT_CARD": {
         "description": "Credit or debit card numbers (Visa, MasterCard, Amex, etc.)",
@@ -84,9 +143,9 @@ ENTITY_METADATA: Final[dict[str, dict]] = {
         "examples": ["15/03/1990", "March 15, 1990"],
     },
     "LOCATION": {
-        "description": "Physical addresses, cities, and geographic locations",
+        "description": "Physical addresses, cities, and geographic locations (generic NLP — see AU_ADDRESS for Australian-specific detection)",
         "frameworks": ["GDPR", "APPs", "HIPAA"],
-        "examples": ["123 Pitt Street, Sydney NSW 2000"],
+        "examples": ["Sydney", "Melbourne CBD"],
     },
     "MEDICAL_LICENSE": {
         "description": "Medical licence or registration numbers",
@@ -107,20 +166,5 @@ ENTITY_METADATA: Final[dict[str, dict]] = {
         "description": "US bank account numbers",
         "frameworks": ["SOX", "PCI-DSS"],
         "examples": ["1234567890"],
-    },
-    "AU_TFN": {
-        "description": "Australian Tax File Number (8 or 9 digit with checksum validation)",
-        "frameworks": ["APPs", "TAA"],
-        "examples": ["123 456 782"],
-    },
-    "AU_MEDICARE": {
-        "description": "Australian Medicare card number (10-digit with checksum validation)",
-        "frameworks": ["APPs", "HIPAA"],
-        "examples": ["2123 45670 1"],
-    },
-    "AU_ABN": {
-        "description": "Australian Business Number (11-digit with ABN validation algorithm)",
-        "frameworks": ["APPs", "ATO"],
-        "examples": ["51 824 753 556"],
     },
 }

@@ -1,6 +1,6 @@
 # mcp-pii-guard-au
 
-Australian PII detection and sanitisation for AI agents. An [MCP server](https://modelcontextprotocol.io) that finds and redacts Tax File Numbers (TFN), Medicare card numbers, ABNs, and 13 other PII entity types in text — before it reaches an LLM or gets stored. Built on [Microsoft Presidio](https://microsoft.github.io/presidio/) with custom Australian recognisers that use real checksum validation, not just regex.
+Australian PII detection and sanitisation for AI agents. An [MCP server](https://modelcontextprotocol.io) that finds and redacts Tax File Numbers (TFN), Medicare card numbers, ABNs, ACNs, BSB and bank account numbers, drivers licence numbers, passport numbers, Centrelink CRNs, Australian addresses, and 13 standard entity types — before text reaches an LLM or gets stored. Built on [Microsoft Presidio](https://microsoft.github.io/presidio/) with 10 custom Australian recognisers that use real checksum validation and context-word boosting, not just regex.
 
 [Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that lets AI assistants — Claude, Cursor, Copilot, custom agents — call external tools over a standardised interface. This server exposes PII detection and sanitisation as MCP tools. Any MCP-compatible client can call them without custom integration code.
 
@@ -8,7 +8,7 @@ Built for teams in regulated Australian industries — financial services, gover
 
 ---
 
-**Australian entity types that don't exist elsewhere.** TFN, Medicare, and ABN recognisers with real checksum validation — not just regex. Every Presidio wrapper and PII tool on GitHub handles US SSNs and credit cards. None of them handle Australian Tax File Numbers, Medicare card numbers, or ABNs with proper validation. If you're building AI tooling for AU/NZ enterprise, government, or health, this is the gap.
+**Ten Australian entity types that don't exist elsewhere.** TFN, Medicare, ABN, ACN, BSB, bank account, drivers licence, passport, Centrelink CRN, and Australian address recognisers — with real checksum validation where algorithms exist, and context-word boosting throughout. No other Presidio wrapper or PII tool on GitHub handles these. If you're building AI tooling for AU/NZ enterprise, government, or health, this is the gap.
 
 **Audit logging that a compliance officer can actually use.** Every scan writes structured JSON to an append-only log file. It records *what types of PII were found*, *how many*, *what tool was called*, and *what confidence threshold was used*. It never records the original text. It never records the detected values. This is the difference between an audit trail and a liability — and it's what GDPR Article 30, the Australian Privacy Act, and SOX controls actually require.
 
@@ -22,7 +22,9 @@ Built for teams in regulated Australian industries — financial services, gover
 - You're building a RAG pipeline over Australian government case files and need to redact PII before indexing into a vector store
 - A compliance team needs evidence that PII was handled — not just a policy document, but machine-readable audit logs with scan IDs and entity counts
 - You're processing Australian customer data (CRM exports, form submissions, call transcripts) and need TFN/Medicare/ABN detection that actually validates checksums instead of matching any 9-digit number
+- Payroll or invoicing data contains BSB numbers, bank account numbers, and addresses that must be stripped before entering an AI system
 - You need to satisfy Australian Privacy Principle 11 (APP 11) requirements for securing personal information before it enters an AI system
+- Government or social services data contains Centrelink CRNs that must never reach an LLM context window
 
 ## How it works
 
@@ -30,8 +32,8 @@ Built for teams in regulated Australian industries — financial services, gover
 ┌─────────────┐     stdio      ┌─────────────────┐   Presidio    ┌─────────┐
 │  MCP Client │◄──────────────►│mcp-pii-guard-au  │──────────────►│  spaCy  │
 │  (Claude,   │  JSON-RPC      │                  │ NLP detection │en_core_ │
-│   Cursor,   │                │  4 tools         │ + custom AU   │web_lg   │
-│   agent)    │                │  audit log       │ recognisers   │         │
+│   Cursor,   │                │  4 tools         │ + 10 custom   │web_lg   │
+│   agent)    │                │  audit log       │ AU recognisers│         │
 └─────────────┘                └────────┬─────────┘              └─────────┘
                                         │
                                         ▼
@@ -131,15 +133,17 @@ Scan text and return detected PII entities without modifying anything. Use this 
 
 ```json
 // Input
-{"text": "Contact Jane Smith at jane@acme.com or 0412 345 678", "min_confidence": 0.7}
+{"text": "Contact Jane Smith at jane@acme.com. TFN: 123 456 782. BSB: 062-000 Acct: 1234 5678", "min_confidence": 0.7}
 
 // Output
 {
-  "entity_count": 3,
+  "entity_count": 5,
   "entities": [
     {"type": "PERSON", "text": "Jane Smith", "start": 8, "end": 18, "confidence": 0.92},
     {"type": "EMAIL_ADDRESS", "text": "jane@acme.com", "start": 22, "end": 35, "confidence": 0.95},
-    {"type": "PHONE_NUMBER", "text": "0412 345 678", "start": 39, "end": 51, "confidence": 0.80}
+    {"type": "AU_TFN", "text": "123 456 782", "start": 42, "end": 53, "confidence": 0.85},
+    {"type": "AU_BSB", "text": "062-000", "start": 60, "end": 67, "confidence": 0.80},
+    {"type": "AU_BANK_ACCOUNT", "text": "1234 5678", "start": 74, "end": 83, "confidence": 0.75}
   ],
   "has_pii": true,
   "scan_id": "a1b2c3d4-..."
@@ -152,13 +156,13 @@ Detect and scrub PII in one call. The workhorse tool — call this when you need
 
 ```json
 // Input
-{"text": "Invoice for Jane Smith (jane@acme.com). TFN: 123 456 782", "mode": "redact"}
+{"text": "Invoice for Jane Smith (jane@acme.com). TFN: 123 456 782. Pay to BSB 062-000 Acct 1234 5678", "mode": "redact"}
 
 // Output
 {
-  "sanitized_text": "Invoice for [REDACTED:PERSON] ([REDACTED:EMAIL]). TFN: [REDACTED:AU_TFN]",
-  "entities_removed": 3,
-  "entity_types_found": ["AU_TFN", "EMAIL_ADDRESS", "PERSON"],
+  "sanitized_text": "Invoice for [REDACTED:PERSON] ([REDACTED:EMAIL]). TFN: [REDACTED:AU_TFN]. Pay to BSB [REDACTED:AU_BSB] Acct [REDACTED:AU_BANK_ACCOUNT]",
+  "entities_removed": 5,
+  "entity_types_found": ["AU_BANK_ACCOUNT", "AU_BSB", "AU_TFN", "EMAIL_ADDRESS", "PERSON"],
   "mode": "redact",
   "scan_id": "e5f6g7h8-...",
   "audit_logged": true
@@ -181,7 +185,9 @@ Recursively sanitise all string fields in a JSON document. For CRM records, cust
     "id": "cust-001",
     "name": "Jane Smith",
     "email": "jane@acme.com",
-    "notes": "Called re TFN 123 456 782"
+    "address": "123 Pitt Street, Sydney NSW 2000",
+    "tfn": "123 456 782",
+    "bank": {"bsb": "062-000", "account": "1234 5678"}
   },
   "skip_fields": ["id"],
   "mode": "redact"
@@ -193,12 +199,14 @@ Recursively sanitise all string fields in a JSON document. For CRM records, cust
     "id": "cust-001",
     "name": "[REDACTED:PERSON]",
     "email": "[REDACTED:EMAIL]",
-    "notes": "Called re TFN [REDACTED:AU_TFN]"
+    "address": "[REDACTED:AU_ADDRESS]",
+    "tfn": "[REDACTED:AU_TFN]",
+    "bank": {"bsb": "[REDACTED:AU_BSB]", "account": "[REDACTED:AU_BANK_ACCOUNT]"}
   },
-  "fields_processed": 3,
-  "fields_sanitised": 3,
-  "total_entities_removed": 4,
-  "entity_summary": {"PERSON": 1, "EMAIL_ADDRESS": 1, "AU_TFN": 1},
+  "fields_processed": 6,
+  "fields_sanitised": 6,
+  "total_entities_removed": 6,
+  "entity_summary": {"PERSON": 1, "EMAIL_ADDRESS": 1, "AU_ADDRESS": 1, "AU_TFN": 1, "AU_BSB": 1, "AU_BANK_ACCOUNT": 1},
   "scan_id": "i9j0k1l2-..."
 }
 ```
@@ -209,29 +217,36 @@ Returns every entity type this server can detect, with descriptions, compliance 
 
 ## Supported Entity Types
 
-### Australian entities (custom recognisers)
+### Australian entities (10 custom recognisers)
 
-These are the entity types that don't exist in other PII tools. Each uses the official government-published validation algorithm, not just a digit-count regex.
+These are the entity types that don't exist in other PII tools. Each uses official government-published validation algorithms where they exist, context-word boosting throughout, and structured pattern matching.
 
 | Entity Type | Description | Frameworks | Validation |
 |---|---|---|---|
-| `AU_TFN` | Australian Tax File Number (8 or 9 digit) | APPs, TAA | Pattern + weighted mod-11 checksum + context words |
-| `AU_MEDICARE` | Australian Medicare card number (10 digit) | APPs, HIPAA | Pattern + weighted mod-10 checksum + context words |
-| `AU_ABN` | Australian Business Number (11 digit) | APPs, ATO | Pattern + mod-89 checksum + context words |
+| `AU_TFN` | Australian Tax File Number (8 or 9 digit) | APPs, TAA | Pattern + weighted mod-11 checksum + context |
+| `AU_MEDICARE` | Australian Medicare card number (10 digit) | APPs, HIPAA | Pattern + weighted mod-10 checksum + context |
+| `AU_ABN` | Australian Business Number (11 digit) | APPs, ATO | Pattern + mod-89 checksum + context |
+| `AU_ACN` | Australian Company Number (9 digit) | APPs, ASIC | Pattern + modulus-10 checksum + context |
+| `AU_DRIVERS_LICENCE` | Drivers licence number (varies by state) | APPs | Multi-pattern (NSW/QLD/WA formats) + context |
+| `AU_PASSPORT` | Australian passport number (1–2 letters + 7 digits) | APPs, DFAT | Pattern + context |
+| `AU_BSB` | Bank-State-Branch number (6 digit) | APPs, PCI-DSS | Pattern + bank prefix validation + context |
+| `AU_BANK_ACCOUNT` | Bank account number (6–10 digits) | APPs, PCI-DSS | Pattern + financial context |
+| `AU_ADDRESS` | Street or postal address | APPs, GDPR | Multi-pattern (street/PO Box/state+postcode) + context |
+| `CENTRELINK_CRN` | Centrelink Customer Reference Number (9 digits + check letter) | APPs, Social Security Act | Pattern + weighted checksum + letter validation + context |
 
-### Standard entities (via Presidio)
+### Standard entities (13 via Presidio)
 
 | Entity Type | Description | Frameworks | Validation |
 |---|---|---|---|
 | `PERSON` | Person names | GDPR, APPs, HIPAA, SOX | NLP (spaCy NER) |
 | `EMAIL_ADDRESS` | Email addresses | GDPR, APPs, HIPAA | Pattern |
-| `PHONE_NUMBER` | Phone numbers (local + international) | GDPR, APPs, HIPAA | Pattern |
+| `PHONE_NUMBER` | Phone numbers (local + international, incl. AU) | GDPR, APPs, HIPAA | Pattern |
 | `CREDIT_CARD` | Credit/debit card numbers | PCI-DSS, GDPR, APPs | Luhn checksum |
 | `IBAN_CODE` | International Bank Account Numbers | GDPR, PCI-DSS, SOX | Pattern + checksum |
 | `IP_ADDRESS` | IPv4 and IPv6 addresses | GDPR | Pattern |
 | `URL` | URLs that may contain PII | GDPR | Pattern |
 | `DATE_TIME` | Dates and times (e.g. date of birth) | GDPR, HIPAA, APPs | Pattern + NLP |
-| `LOCATION` | Physical addresses and locations | GDPR, APPs, HIPAA | NLP |
+| `LOCATION` | Physical locations (generic NLP — see `AU_ADDRESS` for Australian-specific) | GDPR, APPs, HIPAA | NLP |
 | `MEDICAL_LICENSE` | Medical licence numbers | HIPAA | Pattern |
 | `US_SSN` | US Social Security Numbers | SOX, HIPAA | Pattern + checksum |
 | `US_PASSPORT` | US passport numbers | GDPR, SOX | Pattern |
@@ -246,8 +261,8 @@ Every tool call writes a structured JSON entry to `./logs/pii_guard_audit.jsonl`
   "timestamp": "2026-03-26T10:42:00Z",
   "scan_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "tool": "sanitize_text",
-  "entity_types_detected": ["PERSON", "EMAIL_ADDRESS"],
-  "entity_count": 2,
+  "entity_types_detected": ["PERSON", "EMAIL_ADDRESS", "AU_TFN", "AU_BSB"],
+  "entity_count": 4,
   "mode": "redact",
   "text_length": 240,
   "min_confidence": 0.7,
@@ -325,7 +340,7 @@ Tool-level defaults (configured in `config.py`):
 |---|---|---|
 | Confidence threshold | `0.7` | Minimum Presidio score to report an entity |
 | Language | `en` | Language code for NLP analysis |
-| Entity types | All 16 types | Which entity types to scan for by default |
+| Entity types | All 23 types | Which entity types to scan for by default |
 
 All defaults can be overridden per-call via tool parameters.
 
@@ -342,6 +357,26 @@ The Medicare recogniser matches 10-digit numbers where the first digit is 2–6,
 ### How does ABN validation work?
 
 The ABN recogniser matches 11-digit numbers and validates using the official ABN algorithm: subtract 1 from the first digit, multiply each digit by its weight (`[10, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19]`), sum the products, and check divisibility by 89. Context words like "ABN", "business number", and "GST" boost confidence.
+
+### How does ACN validation work?
+
+The ACN recogniser matches 9-digit numbers and validates using the ASIC modulus-10 algorithm: multiply digits 1–8 by weights `[8, 7, 6, 5, 4, 3, 2, 1]`, sum the products, and verify the check digit equals `(10 - (sum % 10)) % 10`. Context words like "ACN", "ASIC", and "Pty Ltd" boost confidence.
+
+### How does BSB detection work?
+
+The BSB recogniser matches 6-digit codes (formatted as XXX-XXX or XXXXXX), then validates the first two digits against a table of known Australian financial institution prefixes (01 = ANZ, 03 = Westpac, 06 = CBA, 08 = NAB, etc.). Context words like "BSB", "bank details", and "direct deposit" boost confidence.
+
+### How does Centrelink CRN detection work?
+
+The CRN recogniser matches 9-digit + letter sequences and validates using a weighted checksum: multiply each digit by weights `[1, 2, 3, 4, 5, 6, 7, 8, 9]`, sum the products, and verify the trailing letter matches the remainder when divided by 26 (0=A, 1=B, ..., 25=Z). Context words like "CRN", "Centrelink", and "Services Australia" boost confidence.
+
+### How does Australian address detection work?
+
+The address recogniser uses three patterns: full street addresses (number + street name + street type + optional suburb/state/postcode), PO Box / GPO Box addresses, and state abbreviation + 4-digit postcode fragments. Street types cover standard Australian abbreviations (St, Rd, Ave, Dr, Cres, Pl, Ct, Ln, Tce, Hwy, Bvd, Cl, Pde, Cct, etc.). All Australian states and territories are recognised (NSW, VIC, QLD, SA, WA, TAS, NT, ACT).
+
+### How does drivers licence detection work?
+
+Licence formats vary by state (NSW: 2 letters + 6 digits, QLD: 8 digits, WA: 7 digits, etc.). Because these formats overlap heavily with other number types, the recogniser uses deliberately low base scores and relies on context words like "licence", "driver", "RMS", "VicRoads", or "Service NSW" for confidence boosting. Without nearby context, matches will not reach the default 0.7 threshold.
 
 ### Does this work with Claude Desktop?
 
@@ -361,11 +396,11 @@ No. This is a deliberate design decision. The audit log records metadata only: w
 
 ### What compliance frameworks does this support?
 
-Entity types are mapped to: the **Australian Privacy Act** (APPs), the **Taxation Administration Act** (TAA), **GDPR**, **HIPAA**, **SOX**, **PCI-DSS**, and **ATO** compliance requirements. The `list_supported_entities` tool returns the full framework mapping for each entity type.
+Entity types are mapped to: the **Australian Privacy Act** (APPs), the **Taxation Administration Act** (TAA), **GDPR**, **HIPAA**, **SOX**, **PCI-DSS**, **ATO**, **ASIC**, **DFAT**, and **Social Security Act** compliance requirements. The `list_supported_entities` tool returns the full framework mapping for each entity type.
 
 ### Can I use this without MCP? As a Python library?
 
-The core detection and sanitisation logic is in `core/detector.py` and `core/sanitiser.py`. You can import and call these directly without running the MCP server. The MCP layer in `server.py` is a thin wrapper.
+The core detection and sanitisation logic is in `core/detector.py` and `core/sanitizer.py`. You can import and call these directly without running the MCP server. The MCP layer in `server.py` is a thin wrapper.
 
 ### Why only four tools?
 
@@ -373,10 +408,11 @@ Every tool an LLM agent has access to must be described in the system prompt, co
 
 ## Roadmap
 
-- **v2**: De-tokenization endpoint for `tokenize` mode (reverse tokens back to original values within a session)
-- **v2**: Additional AU/NZ entity types (Australian driver licence, Australian passport, NZ IRD number)
+- **v2**: De-tokenisation endpoint for `tokenize` mode (reverse tokens back to original values within a session)
+- **v2**: NZ entity types (IRD number, NHI number, NZ drivers licence)
 - **v2**: Configurable confidence thresholds per entity type
+- **v2**: Australian phone number custom recogniser with carrier-prefix validation
 
-## License
+## Licence
 
 MIT

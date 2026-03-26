@@ -1,7 +1,7 @@
 [project]
 name = "mcp-pii-guard-au"
 version = "0.1.0"
-description = "MCP server for Australian PII detection and sanitisation — TFN, Medicare, ABN recognisers with checksum validation, compliance audit logging, built on Presidio"
+description = "MCP server for Australian PII detection and sanitisation — TFN, Medicare, ABN, ACN, BSB, bank account, drivers licence, passport, Centrelink CRN, and address recognisers with checksum validation, compliance audit logging, built on Presidio"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -20,6 +20,10 @@ keywords = [
     "tax-file-number",
     "medicare",
     "abn",
+    "acn",
+    "bsb",
+    "centrelink",
+    "drivers-licence",
     "gdpr",
     "hipaa",
     "compliance",
