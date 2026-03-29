@@ -1,5 +1,7 @@
 # mcp-pii-guard-au
 
+[![SafeSkill 92/100](https://img.shields.io/badge/SafeSkill-92%2F100_Verified%20Safe-brightgreen)](https://safeskill.dev/scan/mattwagstaff-mcp-pii-guard-au)
+
 Australian PII detection and sanitisation for AI agents. An [MCP server](https://modelcontextprotocol.io) that finds and redacts Tax File Numbers (TFN), Medicare card numbers, ABNs, ACNs, BSB and bank account numbers, drivers licence numbers, passport numbers, Centrelink CRNs, Australian addresses, and 13 standard entity types — before text reaches an LLM or gets stored. Built on [Microsoft Presidio](https://microsoft.github.io/presidio/) with 10 custom Australian recognisers that use real checksum validation and context-word boosting, not just regex.
 
 [Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that lets AI assistants — Claude, Cursor, Copilot, custom agents — call external tools over a standardised interface. This server exposes PII detection and sanitisation as MCP tools. Any MCP-compatible client can call them without custom integration code.
