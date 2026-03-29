@@ -1,6 +1,6 @@
 # mcp-pii-guard-au
 
-Australian PII detection and sanitisation for AI agents. An [MCP server](https://modelcontextprotocol.io) that finds and redacts Tax File Numbers (TFN), Medicare card numbers, ABNs, ACNs, BSB and bank account numbers, drivers licence numbers, passport numbers, Centrelink CRNs, Australian addresses, and 13 standard entity types — before text reaches an LLM or gets stored. Built on [Microsoft Presidio](https://microsoft.github.io/presidio/) with 10 custom Australian recognisers that use real checksum validation and context-word boosting, not just regex.
+Australian and New Zealand PII detection and sanitisation for AI agents. An [MCP server](https://modelcontextprotocol.io) that finds and redacts Tax File Numbers (TFN), Medicare card numbers, ABNs, ACNs, BSB and bank account numbers, drivers licence numbers, passport numbers, Centrelink CRNs, Australian addresses, Australian phone numbers, NZ IRD numbers, NZ NHI numbers, NZ drivers licences, and 13 standard entity types — before text reaches an LLM or gets stored. Built on [Microsoft Presidio](https://microsoft.github.io/presidio/) with 14 custom AU/NZ recognisers that use real checksum validation and context-word boosting, not just regex.
 
 [Model Context Protocol](https://modelcontextprotocol.io) (MCP) is an open standard that lets AI assistants — Claude, Cursor, Copilot, custom agents — call external tools over a standardised interface. This server exposes PII detection and sanitisation as MCP tools. Any MCP-compatible client can call them without custom integration code.
 
@@ -8,11 +8,11 @@ Built for teams in regulated Australian industries — financial services, gover
 
 ---
 
-**Ten Australian entity types that don't exist elsewhere.** TFN, Medicare, ABN, ACN, BSB, bank account, drivers licence, passport, Centrelink CRN, and Australian address recognisers — with real checksum validation where algorithms exist, and context-word boosting throughout. No other Presidio wrapper or PII tool on GitHub handles these. If you're building AI tooling for AU/NZ enterprise, government, or health, this is the gap.
+**Fourteen AU/NZ entity types that don't exist elsewhere.** TFN, Medicare, ABN, ACN, BSB, bank account, drivers licence, passport, Centrelink CRN, Australian address, Australian phone number, NZ IRD, NZ NHI, and NZ drivers licence recognisers — with real checksum validation where algorithms exist, and context-word boosting throughout. No other Presidio wrapper or PII tool on GitHub handles these. If you're building AI tooling for AU/NZ enterprise, government, or health, this is the gap.
 
 **Audit logging that a compliance officer can actually use.** Every scan writes structured JSON to an append-only log file. It records *what types of PII were found*, *how many*, *what tool was called*, and *what confidence threshold was used*. It never records the original text. It never records the detected values. This is the difference between an audit trail and a liability — and it's what GDPR Article 30, the Australian Privacy Act, and SOX controls actually require.
 
-**Four tools, deliberately.** Most MCP servers ship a dozen tools and let the model figure it out. Every tool an agent has to evaluate costs context window tokens, increases routing errors, and makes the system harder to audit. This server exposes exactly four tools with clear contracts: detect, sanitise text, sanitise documents, list entities. Small surface. Predictable behaviour. Easy to reason about in an agent workflow.
+**Five tools, deliberately.** Most MCP servers ship a dozen tools and let the model figure it out. Every tool an agent has to evaluate costs context window tokens, increases routing errors, and makes the system harder to audit. This server exposes exactly five tools with clear contracts: detect, sanitise text, sanitise documents, de-tokenise, and list entities. Small surface. Predictable behaviour. Easy to reason about in an agent workflow.
 
 ---
 
@@ -32,8 +32,8 @@ Built for teams in regulated Australian industries — financial services, gover
 ┌─────────────┐     stdio      ┌──────────────────┐   Presidio    ┌─────────┐
 │  MCP Client │◄──────────────►│mcp-pii-guard-au  │──────────────►│  spaCy  │
 │  (Claude,   │  JSON-RPC      │                  │ NLP detection │en_core_ │
-│   Cursor,   │                │  4 tools         │ + 10 custom   │web_lg   │
-│   agent)    │                │  audit log       │ AU recognisers│         │
+│   Cursor,   │                │  5 tools         │ + 14 custom   │web_lg   │
+│   agent)    │                │  audit log       │AU/NZ recognsrs│         │
 └─────────────┘                └────────┬─────────┘               └─────────┘
                                         │
                                         ▼
@@ -123,7 +123,7 @@ mcp-pii-guard-au
 
 ## Tools
 
-This server exposes exactly four tools. An MCP client (like Claude) discovers them automatically on connection.
+This server exposes exactly five tools. An MCP client (like Claude) discovers them automatically on connection.
 
 ### `detect_pii`
 
@@ -170,7 +170,9 @@ Detect and scrub PII in one call. The workhorse tool — call this when you need
 Three modes:
 - **`redact`** (default) — `[REDACTED:TYPE]` labels. No reversibility. Safest.
 - **`replace`** — Realistic fake values via Presidio's faker operators. Preserves text shape for downstream processing.
-- **`tokenize`** — Stable tokens like `{{EMAIL_ADDRESS_1}}`. Useful when you need to reference the same entity across a workflow without exposing the value.
+- **`tokenize`** — Stable tokens like `{{EMAIL_ADDRESS_1}}`. Useful when you need to reference the same entity across a workflow without exposing the value. Use `detokenize_text` with the returned `scan_id` to reverse tokenisation within the same session.
+
+All tools accept an optional `entity_thresholds` parameter — a dict of per-entity-type confidence overrides (e.g. `{"AU_ADDRESS": 0.9, "PERSON": 0.5}`). Entity types not listed fall back to `min_confidence`.
 
 ### `sanitize_document`
 
@@ -209,13 +211,31 @@ Recursively sanitise all string fields in a JSON document. For CRM records, cust
 }
 ```
 
+### `detokenize_text`
+
+Reverse tokenisation by replacing tokens with their original values. Pass the `scan_id` from a previous `sanitize_text` call with `mode="tokenize"`.
+
+```json
+// Input
+{"text": "Invoice for {{PERSON_1}} ({{EMAIL_ADDRESS_1}})", "scan_id": "e5f6g7h8-..."}
+
+// Output
+{
+  "original_text": "Invoice for Jane Smith (jane@acme.com)",
+  "tokens_reversed": 2,
+  "scan_id": "e5f6g7h8-..."
+}
+```
+
+Token mappings are **session-scoped** — they exist only while the server process is running and are never written to disk. If the server restarts, all mappings are lost. This is deliberate: original PII values are never persisted to storage.
+
 ### `list_supported_entities`
 
 Returns every entity type this server can detect, with descriptions, compliance framework mappings, and examples. No arguments. Call this first if you need to build an `entity_types` filter.
 
 ## Supported Entity Types
 
-### Australian entities (10 custom recognisers)
+### Australian entities (11 custom recognisers)
 
 These are the entity types that don't exist in other PII tools. Each uses official government-published validation algorithms where they exist, context-word boosting throughout, and structured pattern matching.
 
@@ -230,7 +250,16 @@ These are the entity types that don't exist in other PII tools. Each uses offici
 | `AU_BSB` | Bank-State-Branch number (6 digit) | APPs, PCI-DSS | Pattern + bank prefix validation + context |
 | `AU_BANK_ACCOUNT` | Bank account number (6–10 digits) | APPs, PCI-DSS | Pattern + financial context |
 | `AU_ADDRESS` | Street or postal address | APPs, GDPR | Multi-pattern (street/PO Box/state+postcode) + context |
+| `AU_PHONE_NUMBER` | Australian phone number (mobile/landline/international) | APPs, GDPR | Pattern + carrier-prefix validation + context |
 | `CENTRELINK_CRN` | Centrelink Customer Reference Number (9 digits + check letter) | APPs, Social Security Act | Pattern + weighted checksum + letter validation + context |
+
+### New Zealand entities (3 custom recognisers)
+
+| Entity Type | Description | Frameworks | Validation |
+|---|---|---|---|
+| `NZ_IRD` | NZ IRD (Inland Revenue) number (8–9 digit) | NZ Privacy Act, NZ Tax Administration Act | Pattern + mod-11 checksum + context |
+| `NZ_NHI` | NZ National Health Index number (3 letters + 4 digits) | NZ Privacy Act, NZ Health Act | Pattern + check digit validation + context |
+| `NZ_DRIVERS_LICENCE` | NZ drivers licence number (2 letters + 6 digits) | NZ Privacy Act | Pattern + context |
 
 ### Standard entities (13 via Presidio)
 
@@ -338,7 +367,7 @@ Tool-level defaults (configured in `mcp_pii_guard_au/config.py`):
 |---|---|---|
 | Confidence threshold | `0.7` | Minimum Presidio score to report an entity |
 | Language | `en` | Language code for NLP analysis |
-| Entity types | All 23 types | Which entity types to scan for by default |
+| Entity types | All 27 types | Which entity types to scan for by default |
 
 All defaults can be overridden per-call via tool parameters.
 
@@ -386,7 +415,7 @@ Yes. Add the server to a `.mcp.json` file in your project root. Claude Code will
 
 ### Does it detect Australian phone numbers?
 
-Presidio's built-in phone number recogniser handles international formats including Australian numbers (`+61 X XXXX XXXX`, `0X XXXX XXXX`, `04XX XXX XXX`). No custom recogniser needed.
+Yes. The custom `AU_PHONE_NUMBER` recogniser detects mobile (04XX), landline (02/03/07/08), and international (+61) formats. Mobile numbers are validated against known carrier prefix ranges (Telstra 0400–0419/0470–0489, Optus 0430–0449/0490–0499, Vodafone 0420–0429/0450–0469). Presidio's built-in `PHONE_NUMBER` type also catches international formats as a fallback.
 
 ### Does the audit log contain the original PII?
 
@@ -400,16 +429,27 @@ Entity types are mapped to: the **Australian Privacy Act** (APPs), the **Taxatio
 
 The core detection and sanitisation logic is in `mcp_pii_guard_au/core/detector.py` and `mcp_pii_guard_au/core/sanitizer.py`. You can import and call these directly without running the MCP server. The MCP layer in `mcp_pii_guard_au/server.py` is a thin wrapper.
 
-### Why only four tools?
+### Does it detect New Zealand PII?
 
-Every tool an LLM agent has access to must be described in the system prompt, consuming context window tokens. Each additional tool increases the chance of the model selecting the wrong one. Four tools with clear, non-overlapping purposes (detect, sanitise text, sanitise document, list entities) gives agents enough capability to handle any PII workflow without the ambiguity of a large tool surface. This is a deliberate constraint, not a limitation.
+Yes. Three NZ entity types are supported: IRD numbers (with mod-11 checksum validation), NHI numbers (with check digit validation), and drivers licence numbers. Context words like "IRD", "NHI", "NZTA", and "Waka Kotahi" boost confidence.
+
+### Can I set different confidence thresholds per entity type?
+
+Yes. All detection and sanitisation tools accept an optional `entity_thresholds` parameter — a dict mapping entity types to confidence thresholds. For example, `{"AU_ADDRESS": 0.9, "PERSON": 0.5}` would require high confidence for addresses but accept lower confidence for person names. Entity types not listed fall back to the `min_confidence` parameter.
+
+### How does de-tokenisation work?
+
+When you call `sanitize_text` with `mode="tokenize"`, the server stores a mapping from each token (like `{{EMAIL_ADDRESS_1}}`) to its original value, keyed by the `scan_id`. You can then call `detokenize_text` with the tokenised text and the `scan_id` to reverse the tokens back to original values. Mappings are session-scoped — they exist only in memory while the server is running and are never written to disk.
+
+### Why only five tools?
+
+Every tool an LLM agent has access to must be described in the system prompt, consuming context window tokens. Each additional tool increases the chance of the model selecting the wrong one. Five tools with clear, non-overlapping purposes (detect, sanitise text, sanitise document, de-tokenise, list entities) gives agents enough capability to handle any PII workflow without the ambiguity of a large tool surface. This is a deliberate constraint, not a limitation.
 
 ## Roadmap
 
-- **v2**: De-tokenisation endpoint for `tokenize` mode (reverse tokens back to original values within a session)
-- **v2**: NZ entity types (IRD number, NHI number, NZ drivers licence)
-- **v2**: Configurable confidence thresholds per entity type
-- **v2**: Australian phone number custom recogniser with carrier-prefix validation
+- **v3**: Partial masking mode (e.g. `TFN: ***-***-782` showing last few characters)
+- **v3**: Configurable context-word lists per entity type
+- **v3**: Additional NZ entity types (NZ passport, NZ bank account)
 
 ## Licence
 

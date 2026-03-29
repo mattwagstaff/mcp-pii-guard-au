@@ -30,11 +30,18 @@ from .core.sanitizer import create_anonymizer, sanitize
 from .models import (
     DetectedEntity,
     DetectPiiResult,
+    DetokenizeResult,
     EntityInfo,
     SanitizeDocumentResult,
     SanitizeTextResult,
     SupportedEntitiesResult,
 )
+
+# In-memory token mapping store, keyed by scan_id.
+# Mappings are session-scoped — they are lost when the server process exits.
+# This is deliberate: token mappings contain original PII values and should
+# not be persisted to disk.
+_token_mappings: dict[str, dict[str, str]] = {}
 
 
 def _check_spacy_model() -> None:
@@ -81,6 +88,7 @@ def detect_pii(
     language: str = DEFAULT_LANGUAGE,
     entity_types: list[str] | None = None,
     min_confidence: float = DEFAULT_CONFIDENCE_THRESHOLD,
+    entity_thresholds: dict[str, float] | None = None,
     audit: bool = True,
 ) -> dict:
     """Scan text and return all detected PII entities without modifying the text.
@@ -97,6 +105,9 @@ def detect_pii(
         entity_types: Optional list of specific entity types to look for.
                       If omitted, scans for all supported types.
         min_confidence: Minimum confidence threshold (0.0–1.0). Default 0.7.
+        entity_thresholds: Optional per-entity-type confidence overrides.
+            E.g. {"AU_ADDRESS": 0.9, "PERSON": 0.5}. Types not listed use
+            min_confidence.
         audit: Whether to write an audit log entry. Default True.
     """
     ctx = mcp.get_context()
@@ -111,6 +122,7 @@ def detect_pii(
             language=language,
             entity_types=entity_types,
             min_confidence=min_confidence,
+            entity_thresholds=entity_thresholds,
         )
 
         entities = [
@@ -155,6 +167,7 @@ def sanitize_text(
     mode: Literal["redact", "replace", "tokenize"] = "redact",
     entity_types: list[str] | None = None,
     min_confidence: float = DEFAULT_CONFIDENCE_THRESHOLD,
+    entity_thresholds: dict[str, float] | None = None,
     audit: bool = True,
 ) -> dict:
     """Detect and remove PII from text in a single operation. This is the most
@@ -165,7 +178,8 @@ def sanitize_text(
     - "redact": replaces PII with [REDACTED:TYPE] labels (safest, default)
     - "replace": replaces PII with Presidio's default type-labelled placeholders
     - "tokenize": replaces PII with stable tokens like {{EMAIL_1}} (useful if you
-      need to reference the same entity later without exposing the value)
+      need to reference the same entity later without exposing the value).
+      Use detokenize_text with the returned scan_id to reverse tokenisation.
 
     Do NOT send already-sanitised text through this tool again.
     Do NOT use this for structured documents (dicts/JSON) — use sanitize_document.
@@ -175,6 +189,9 @@ def sanitize_text(
         mode: Sanitisation strategy. Default "redact".
         entity_types: Optional filter for specific entity types.
         min_confidence: Minimum confidence threshold. Default 0.7.
+        entity_thresholds: Optional per-entity-type confidence overrides.
+            E.g. {"AU_ADDRESS": 0.9, "PERSON": 0.5}. Types not listed use
+            min_confidence.
         audit: Whether to write an audit log entry. Default True.
     """
     ctx = mcp.get_context()
@@ -188,25 +205,32 @@ def sanitize_text(
             text,
             entity_types=entity_types,
             min_confidence=min_confidence,
+            entity_thresholds=entity_thresholds,
         )
 
-        sanitized = sanitize(
+        sanitize_result = sanitize(
             lifespan_state["anonymizer"],
             text,
             results,
             mode=mode,
         )
 
+        # Store token mapping for de-tokenisation if in tokenize mode
+        has_mapping = bool(sanitize_result.token_mapping)
+        if has_mapping:
+            _token_mappings[scan_id] = sanitize_result.token_mapping
+
         entity_types_found = sorted({r.entity_type for r in results})
 
         result = SanitizeTextResult(
             original_length=len(text),
-            sanitized_text=sanitized,
+            sanitized_text=sanitize_result.text,
             entities_removed=len(results),
             entity_types_found=entity_types_found,
             mode=mode,
             scan_id=scan_id,
             audit_logged=audit,
+            has_token_mapping=has_mapping,
         )
 
         if audit:
@@ -234,6 +258,7 @@ def _sanitize_document_recursive(
     mode: Literal["redact", "replace", "tokenize"],
     skip_fields: set[str],
     min_confidence: float,
+    entity_thresholds: dict[str, float] | None,
     stats: dict,
 ) -> object:
     """Recursively walk a document and sanitise all string values."""
@@ -249,6 +274,7 @@ def _sanitize_document_recursive(
                     mode=mode,
                     skip_fields=skip_fields,
                     min_confidence=min_confidence,
+                    entity_thresholds=entity_thresholds,
                     stats=stats,
                 )
         return result
@@ -260,6 +286,7 @@ def _sanitize_document_recursive(
                 mode=mode,
                 skip_fields=skip_fields,
                 min_confidence=min_confidence,
+                entity_thresholds=entity_thresholds,
                 stats=stats,
             )
             for item in obj
@@ -271,6 +298,7 @@ def _sanitize_document_recursive(
             lifespan_state["analyzer"],
             obj,
             min_confidence=min_confidence,
+            entity_thresholds=entity_thresholds,
         )
 
         if results:
@@ -279,12 +307,13 @@ def _sanitize_document_recursive(
             for r in results:
                 stats["entity_summary"][r.entity_type] += 1
 
-            return sanitize(
+            sanitize_result = sanitize(
                 lifespan_state["anonymizer"],
                 obj,
                 results,
                 mode=mode,
             )
+            return sanitize_result.text
         return obj
     else:
         # Numbers, booleans, None — pass through unchanged
@@ -296,6 +325,8 @@ def sanitize_document(
     document: dict,
     mode: Literal["redact", "replace", "tokenize"] = "redact",
     skip_fields: list[str] | None = None,
+    min_confidence: float = DEFAULT_CONFIDENCE_THRESHOLD,
+    entity_thresholds: dict[str, float] | None = None,
     audit: bool = True,
 ) -> dict:
     """Sanitise all string fields in a JSON document (dict) recursively. Use this
@@ -312,6 +343,10 @@ def sanitize_document(
         document: A JSON-serialisable dict to sanitise.
         mode: Sanitisation strategy. Default "redact".
         skip_fields: Field names to skip (e.g. ["id", "created_at"]).
+        min_confidence: Minimum confidence threshold. Default 0.7.
+        entity_thresholds: Optional per-entity-type confidence overrides.
+            E.g. {"AU_ADDRESS": 0.9, "PERSON": 0.5}. Types not listed use
+            min_confidence.
         audit: Whether to write an audit log entry. Default True.
     """
     ctx = mcp.get_context()
@@ -332,7 +367,8 @@ def sanitize_document(
             lifespan_state=lifespan_state,
             mode=mode,
             skip_fields=set(skip_fields) if skip_fields else set(),
-            min_confidence=DEFAULT_CONFIDENCE_THRESHOLD,
+            min_confidence=min_confidence,
+            entity_thresholds=entity_thresholds,
             stats=stats,
         )
 
@@ -353,7 +389,83 @@ def sanitize_document(
                 entity_types_detected=list(stats["entity_summary"].keys()),
                 entity_count=stats["total_entities_removed"],
                 mode=mode,
-                min_confidence=DEFAULT_CONFIDENCE_THRESHOLD,
+                min_confidence=min_confidence,
+            )
+
+        return result.model_dump()
+
+    except Exception as e:
+        return {"error": str(e), "scan_id": scan_id}
+
+
+@mcp.tool()
+def detokenize_text(
+    text: str,
+    scan_id: str,
+    audit: bool = True,
+) -> dict:
+    """Reverse tokenisation by replacing tokens with their original values.
+
+    After calling sanitize_text with mode="tokenize", the returned scan_id can be
+    used here to reverse the tokens back to original PII values. This is useful
+    for workflows where PII must be temporarily hidden but later restored —
+    for example, processing text through an LLM and then reinserting names or
+    addresses into the final output.
+
+    Token mappings are session-scoped — they exist only while the server process
+    is running and are never persisted to disk. If the server restarts, all
+    mappings are lost. This is a deliberate security design: original PII values
+    are never written to storage.
+
+    Do NOT call this with a scan_id from a redact or replace operation — those
+    modes are irreversible by design.
+
+    Args:
+        text: The tokenised text containing tokens like {{EMAIL_ADDRESS_1}}.
+        scan_id: The scan_id returned by the original sanitize_text call.
+        audit: Whether to write an audit log entry. Default True.
+    """
+    ctx = mcp.get_context()
+    lifespan_state = ctx.request_context.lifespan_context
+
+    try:
+        mapping = _token_mappings.get(scan_id)
+        if mapping is None:
+            return {
+                "error": (
+                    f"No token mapping found for scan_id '{scan_id}'. "
+                    "Either the scan_id is incorrect, the original sanitize_text "
+                    "call did not use mode='tokenize', or the server has restarted "
+                    "since the original call (mappings are session-scoped)."
+                ),
+                "scan_id": scan_id,
+            }
+
+        restored = text
+        tokens_reversed = 0
+        for token, original_value in mapping.items():
+            if token in restored:
+                restored = restored.replace(token, original_value)
+                tokens_reversed += 1
+
+        result = DetokenizeResult(
+            original_text=restored,
+            tokens_reversed=tokens_reversed,
+            scan_id=scan_id,
+        )
+
+        if audit:
+            log_scan(
+                lifespan_state["audit_logger"],
+                scan_id=scan_id,
+                tool="detokenize_text",
+                entity_types_detected=list({
+                    # Extract entity type from token like {{EMAIL_ADDRESS_1}}
+                    t.strip("{}").rsplit("_", 1)[0]
+                    for t in mapping
+                }),
+                entity_count=tokens_reversed,
+                min_confidence=0.0,
             )
 
         return result.model_dump()

@@ -34,7 +34,7 @@ STANDARD_ENTITIES: Final[list[str]] = [
 ]
 
 # Custom Australian entity types
-CUSTOM_ENTITIES: Final[list[str]] = [
+CUSTOM_AU_ENTITIES: Final[list[str]] = [
     "AU_TFN",
     "AU_MEDICARE",
     "AU_ABN",
@@ -44,8 +44,18 @@ CUSTOM_ENTITIES: Final[list[str]] = [
     "AU_BSB",
     "AU_BANK_ACCOUNT",
     "AU_ADDRESS",
+    "AU_PHONE_NUMBER",
     "CENTRELINK_CRN",
 ]
+
+# Custom New Zealand entity types
+CUSTOM_NZ_ENTITIES: Final[list[str]] = [
+    "NZ_IRD",
+    "NZ_NHI",
+    "NZ_DRIVERS_LICENCE",
+]
+
+CUSTOM_ENTITIES: Final[list[str]] = CUSTOM_AU_ENTITIES + CUSTOM_NZ_ENTITIES
 
 DEFAULT_ENTITY_TYPES: Final[list[str]] = STANDARD_ENTITIES + CUSTOM_ENTITIES
 
@@ -97,10 +107,31 @@ ENTITY_METADATA: Final[dict[str, dict]] = {
         "frameworks": ["APPs", "GDPR"],
         "examples": ["123 Pitt Street, Sydney NSW 2000", "PO Box 456, Melbourne VIC 3001"],
     },
+    "AU_PHONE_NUMBER": {
+        "description": "Australian phone number with carrier-prefix validation (mobile 04XX, landline 02/03/07/08, international +61)",
+        "frameworks": ["APPs", "GDPR"],
+        "examples": ["0412 345 678", "+61 2 9876 5432", "03 9876 5432"],
+    },
     "CENTRELINK_CRN": {
         "description": "Centrelink Customer Reference Number (9 digits + check letter, issued by Services Australia)",
         "frameworks": ["APPs", "Social Security Act"],
         "examples": ["123 456 789A"],
+    },
+    # --- New Zealand custom entities ---
+    "NZ_IRD": {
+        "description": "New Zealand IRD (Inland Revenue Department) number (8–9 digit with mod-11 checksum)",
+        "frameworks": ["NZ Privacy Act", "NZ Tax Administration Act"],
+        "examples": ["12-345-678"],
+    },
+    "NZ_NHI": {
+        "description": "New Zealand NHI (National Health Index) number (3 letters + 4 digits with check digit)",
+        "frameworks": ["NZ Privacy Act", "NZ Health Act"],
+        "examples": ["ABC1234"],
+    },
+    "NZ_DRIVERS_LICENCE": {
+        "description": "New Zealand drivers licence number (2 letters + 6 digits)",
+        "frameworks": ["NZ Privacy Act"],
+        "examples": ["AB123456"],
     },
     # --- Standard Presidio entities ---
     "PERSON": {

@@ -36,6 +36,7 @@ class SanitizeTextResult(BaseModel):
     mode: Literal["redact", "replace", "tokenize"]
     scan_id: str
     audit_logged: bool
+    has_token_mapping: bool = False
 
 
 class SanitizeDocumentResult(BaseModel):
@@ -56,6 +57,14 @@ class EntityInfo(BaseModel):
     description: str
     frameworks: list[str]
     examples: list[str]
+
+
+class DetokenizeResult(BaseModel):
+    """Result of reversing tokenisation on text."""
+
+    original_text: str
+    tokens_reversed: int
+    scan_id: str
 
 
 class SupportedEntitiesResult(BaseModel):

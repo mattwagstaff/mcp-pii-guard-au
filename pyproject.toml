@@ -1,6 +1,6 @@
 [project]
 name = "mcp-pii-guard-au"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server for Australian PII detection and sanitisation — TFN, Medicare, ABN, ACN, BSB, bank account, drivers licence, passport, Centrelink CRN, and address recognisers with checksum validation, compliance audit logging, built on Presidio"
 readme = "README.md"
 license = { text = "MIT" }
