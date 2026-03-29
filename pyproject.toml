@@ -59,6 +59,12 @@ dependencies = [
     "pydantic>=2.0",
 ]
 
+[project.scripts]
+mcp-pii-guard-au = "mcp_pii_guard_au.server:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4", "build", "twine"]
+
 [project.urls]
 Homepage = "https://github.com/mattwagstaff/mcp-pii-guard-au"
 Repository = "https://github.com/mattwagstaff/mcp-pii-guard-au"
@@ -67,3 +73,6 @@ Issues = "https://github.com/mattwagstaff/mcp-pii-guard-au/issues"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_pii_guard_au"]

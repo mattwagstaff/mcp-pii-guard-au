@@ -10,7 +10,7 @@ from pathlib import Path
 
 import structlog
 
-from config import AUDIT_LOG_PATH
+from ..config import AUDIT_LOG_PATH
 
 
 def configure_audit_logger() -> structlog.stdlib.BoundLogger:

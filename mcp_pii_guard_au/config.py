@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
+from importlib.metadata import version
 from typing import Final
 
 SERVER_NAME: Final[str] = "mcp-pii-guard-au"
-SERVER_VERSION: Final[str] = "0.1.0"
+SERVER_VERSION: Final[str] = version(SERVER_NAME)
 
 DEFAULT_CONFIDENCE_THRESHOLD: Final[float] = 0.7
 DEFAULT_LANGUAGE: Final[str] = "en"

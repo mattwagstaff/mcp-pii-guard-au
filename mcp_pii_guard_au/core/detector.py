@@ -5,8 +5,8 @@ from __future__ import annotations
 from presidio_analyzer import AnalyzerEngine, RecognizerResult
 from presidio_analyzer.nlp_engine import NlpEngineProvider
 
-from config import DEFAULT_CONFIDENCE_THRESHOLD, DEFAULT_ENTITY_TYPES, DEFAULT_LANGUAGE
-from core.recognizers import (
+from ..config import DEFAULT_CONFIDENCE_THRESHOLD, DEFAULT_ENTITY_TYPES, DEFAULT_LANGUAGE
+from .recognizers import (
     AuAbnRecognizer,
     AuAcnRecognizer,
     AuAddressRecognizer,

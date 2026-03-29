@@ -17,17 +17,17 @@ from typing import AsyncIterator, Literal
 
 from mcp.server.fastmcp import FastMCP
 
-from config import (
+from .config import (
     DEFAULT_CONFIDENCE_THRESHOLD,
     DEFAULT_LANGUAGE,
     ENTITY_METADATA,
     SERVER_NAME,
     SERVER_VERSION,
 )
-from core.audit import configure_audit_logger, log_scan
-from core.detector import create_analyzer, detect
-from core.sanitizer import create_anonymizer, sanitize
-from models import (
+from .core.audit import configure_audit_logger, log_scan
+from .core.detector import create_analyzer, detect
+from .core.sanitizer import create_anonymizer, sanitize
+from .models import (
     DetectedEntity,
     DetectPiiResult,
     EntityInfo,
@@ -386,5 +386,10 @@ def list_supported_entities() -> dict:
     return SupportedEntitiesResult(entities=entities).model_dump()
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for the MCP server."""
     mcp.run(transport="stdio")
+
+
+if __name__ == "__main__":
+    main()

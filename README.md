@@ -50,7 +50,7 @@ This is deliberate for regulated environments: the PII never leaves the machine 
 **Prerequisites:** Python 3.11+, ~500MB disk for the spaCy language model.
 
 ```bash
-# From PyPI (when published)
+# From PyPI
 uv pip install mcp-pii-guard-au
 python -m spacy download en_core_web_lg
 ```
@@ -79,8 +79,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
 {
   "mcpServers": {
     "pii-guard-au": {
-      "command": "python",
-      "args": ["/absolute/path/to/mcp-pii-guard-au/server.py"],
+      "command": "mcp-pii-guard-au",
       "env": {
         "PII_GUARD_AUDIT_LOG": "/absolute/path/to/logs/pii_guard_audit.jsonl"
       }
@@ -98,8 +97,7 @@ Restart Claude Desktop. The PII guard tools will appear in Claude's tool list au
 {
   "mcpServers": {
     "pii-guard-au": {
-      "command": "python",
-      "args": ["/absolute/path/to/mcp-pii-guard-au/server.py"]
+      "command": "mcp-pii-guard-au"
     }
   }
 }
@@ -114,13 +112,13 @@ Any client that implements the [MCP specification](https://modelcontextprotocol.
 Use the MCP Inspector to test tools interactively without a full client:
 
 ```bash
-mcp dev server.py
+mcp dev mcp_pii_guard_au/server.py
 ```
 
 Or run directly to verify startup (will wait for stdin and exit when you close it):
 
 ```bash
-python server.py
+mcp-pii-guard-au
 ```
 
 ## Tools
@@ -285,7 +283,7 @@ The server runs as a subprocess of your MCP client. No separate deployment step 
 ```
 Your machine
 ├── Claude Desktop / Claude Code / your agent
-│   └── spawns: python server.py (stdio)
+│   └── spawns: mcp-pii-guard-au (stdio)
 │       └── writes: logs/pii_guard_audit.jsonl
 ```
 
@@ -297,9 +295,9 @@ For standardised environments or CI pipelines:
 FROM python:3.11-slim
 WORKDIR /app
 COPY . .
-RUN pip install -e . && python -m spacy download en_core_web_lg
+RUN pip install . && python -m spacy download en_core_web_lg
 # No EXPOSE — stdio transport, no network port
-CMD ["python", "server.py"]
+CMD ["mcp-pii-guard-au"]
 ```
 
 The container communicates over stdio (attached stdin/stdout), not HTTP. Your MCP client must be able to start and attach to the container process. Claude Desktop supports this natively:
@@ -334,7 +332,7 @@ If you need remote access, put an MCP proxy in front of it — but understand th
 |---|---|---|
 | `PII_GUARD_AUDIT_LOG` | `./logs/pii_guard_audit.jsonl` | Path to the append-only audit log file |
 
-Tool-level defaults (configured in `config.py`):
+Tool-level defaults (configured in `mcp_pii_guard_au/config.py`):
 
 | Setting | Default | Description |
 |---|---|---|
@@ -400,7 +398,7 @@ Entity types are mapped to: the **Australian Privacy Act** (APPs), the **Taxatio
 
 ### Can I use this without MCP? As a Python library?
 
-The core detection and sanitisation logic is in `core/detector.py` and `core/sanitizer.py`. You can import and call these directly without running the MCP server. The MCP layer in `server.py` is a thin wrapper.
+The core detection and sanitisation logic is in `mcp_pii_guard_au/core/detector.py` and `mcp_pii_guard_au/core/sanitizer.py`. You can import and call these directly without running the MCP server. The MCP layer in `mcp_pii_guard_au/server.py` is a thin wrapper.
 
 ### Why only four tools?
 
